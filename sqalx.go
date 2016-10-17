@@ -82,6 +82,8 @@ func (n *node) Rollback() error {
 
 	if n.savePointID != "" {
 		_, err := n.tx.Exec("ROLLBACK TO SAVEPOINT $1", n.savePointID)
+		n.tx = nil
+		n.Driver = nil
 		return err
 	}
 
@@ -95,6 +97,8 @@ func (n *node) Commit() error {
 
 	if n.savePointID != "" {
 		_, err := n.tx.Exec("RELEASE TO SAVEPOINT $1", n.savePointID)
+		n.tx = nil
+		n.Driver = nil
 		return err
 	}
 

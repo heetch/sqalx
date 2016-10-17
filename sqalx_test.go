@@ -18,6 +18,24 @@ func prepareDB(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock, func()) {
 	}
 }
 
+func TestSqalxTransactionViolations(t *testing.T) {
+	node := sqalx.New(nil)
+
+	require.Panics(t, func() {
+		node.Exec("UPDATE products SET views = views + 1")
+	})
+
+	require.Panics(t, func() {
+		node.Beginx()
+	})
+
+	err := node.Rollback()
+	require.Equal(t, err, sqalx.ErrNotInTransaction)
+
+	err = node.Commit()
+	require.Equal(t, err, sqalx.ErrNotInTransaction)
+}
+
 func TestSqalxSimpleQuery(t *testing.T) {
 	db, mock, cleanup := prepareDB(t)
 	defer cleanup()
@@ -49,5 +67,68 @@ func TestSqalxTopLevelTransaction(t *testing.T) {
 	require.NoError(t, err)
 
 	err = node.Commit()
+	require.NoError(t, err)
+}
+
+func TestSqalxNestedTransactions(t *testing.T) {
+	db, mock, cleanup := prepareDB(t)
+	defer cleanup()
+
+	var err error
+	const query = "UPDATE products SET views = views + 1"
+
+	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectBegin()
+	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("ROLLBACK TO").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("RELEASE TO").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	node := sqalx.New(db)
+
+	_, err = node.Exec(query)
+	require.NoError(t, err)
+
+	n1, err := node.Beginx()
+	require.NoError(t, err)
+	require.NotNil(t, n1)
+
+	_, err = n1.Exec(query)
+	require.NoError(t, err)
+
+	n1_1, err := n1.Beginx()
+	require.NoError(t, err)
+	require.NotNil(t, n1_1)
+
+	_, err = n1_1.Exec(query)
+	require.NoError(t, err)
+
+	err = n1_1.Rollback()
+	require.NoError(t, err)
+
+	err = n1_1.Commit()
+	require.Equal(t, sqalx.ErrNotInTransaction, err)
+
+	n1_1, err = n1.Beginx()
+	require.NoError(t, err)
+	require.NotNil(t, n1_1)
+
+	_, err = n1_1.Exec(query)
+	require.NoError(t, err)
+
+	err = n1_1.Commit()
+	require.NoError(t, err)
+
+	err = n1_1.Commit()
+	require.Equal(t, sqalx.ErrNotInTransaction, err)
+
+	err = n1_1.Rollback()
+	require.Equal(t, sqalx.ErrNotInTransaction, err)
+
+	err = n1.Commit()
 	require.NoError(t, err)
 }
