@@ -14,7 +14,7 @@ var (
 	ErrNotInTransaction = errors.New("not in transaction")
 )
 
-// A Node is database driver that can manages nested transactions
+// A Node is a database driver that can manage nested transactions
 type Node interface {
 	Driver
 	Beginx() (Node, error)
@@ -77,17 +77,25 @@ func (n node) Beginx() (Node, error) {
 
 func (n *node) Rollback() error {
 	if n.tx == nil {
-		return ErrNotInTransaction
+		return nil
 	}
 
+	var err error
+
 	if n.savePointID != "" {
-		_, err := n.tx.Exec("ROLLBACK TO SAVEPOINT $1", n.savePointID)
-		n.tx = nil
-		n.Driver = nil
+		_, err = n.tx.Exec("ROLLBACK TO SAVEPOINT $1", n.savePointID)
+	} else {
+		err = n.tx.Rollback()
+	}
+
+	if err != nil {
 		return err
 	}
 
-	return n.tx.Rollback()
+	n.tx = nil
+	n.Driver = nil
+
+	return nil
 }
 
 func (n *node) Commit() error {
@@ -95,12 +103,20 @@ func (n *node) Commit() error {
 		return ErrNotInTransaction
 	}
 
+	var err error
+
 	if n.savePointID != "" {
-		_, err := n.tx.Exec("RELEASE TO SAVEPOINT $1", n.savePointID)
-		n.tx = nil
-		n.Driver = nil
+		_, err = n.tx.Exec("RELEASE TO SAVEPOINT $1", n.savePointID)
+	} else {
+		err = n.tx.Commit()
+	}
+
+	if err != nil {
 		return err
 	}
 
-	return n.tx.Commit()
+	n.tx = nil
+	n.Driver = nil
+
+	return nil
 }
