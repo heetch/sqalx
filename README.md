@@ -1,5 +1,7 @@
 # sqalx
 
+[![GoDoc](https://godoc.org/github.com/heetch/sqalx?status.svg)](https://godoc.org/github.com/heetch/sqalx)
+
 sqalx (pronounced 'scale-x') is a library built on top of [sqlx](https://github.com/jmoiron/sqlx) that allows to seamlessly create nested transactions and to avoid thinking about whether or not a function is called within a transaction.
 With sqalx you can easily create reusable and composable functions that can be called within or out of transactions and that can create transactions themselves.
 
