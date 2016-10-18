@@ -3,10 +3,9 @@ package sqalx
 import (
 	"database/sql"
 	"errors"
-	"strconv"
-	"time"
 
 	"github.com/jmoiron/sqlx"
+	uuid "github.com/satori/go.uuid"
 )
 
 // Errors
@@ -82,9 +81,7 @@ func (n node) Beginx() (Node, error) {
 		n.tx, err = n.db.Beginx()
 		n.Driver = n.tx
 	} else {
-		// TODO replace by a more deterministic thread safe random string generator.
-		// Using time.Now temporarily to avoid complexity.
-		n.savePointID = strconv.Itoa(int(time.Now().UnixNano()))
+		n.savePointID = uuid.NewV1().String()
 		_, err = n.tx.Exec("SAVEPOINT $1", n.savePointID)
 	}
 
