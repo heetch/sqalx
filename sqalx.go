@@ -8,9 +8,14 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// Errors
 var (
+	// ErrNotInTransaction is returned when using Commit
+	// outside of a transaction.
 	ErrNotInTransaction = errors.New("not in transaction")
+
+	// ErrIncompatibleOption is returned when using an option incompatible
+	// with the selected driver.
+	ErrIncompatibleOption = errors.New("incompatible option")
 )
 
 // A Node is a database driver that can manage nested transactions.
@@ -46,28 +51,47 @@ type Driver interface {
 }
 
 // New creates a new Node with the given DB.
-func New(db *sqlx.DB) Node {
-	return &node{
+func New(db *sqlx.DB, options ...Option) (Node, error) {
+	n := node{
 		db:     db,
 		Driver: db,
 	}
+
+	for _, opt := range options {
+		err := opt(&n)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &n, nil
 }
 
 // Connect to a database.
-func Connect(driverName, dataSourceName string) (Node, error) {
+func Connect(driverName, dataSourceName string, options ...Option) (Node, error) {
 	db, err := sqlx.Connect(driverName, dataSourceName)
 	if err != nil {
 		return nil, err
 	}
 
-	return New(db), nil
+	node, err := New(db, options...)
+	if err != nil {
+		// the connection has been opened within this function, we must close it
+		// on error.
+		db.Close()
+		return nil, err
+	}
+
+	return node, nil
 }
 
 type node struct {
 	Driver
-	db          *sqlx.DB
-	tx          *sqlx.Tx
-	savePointID string
+	db               *sqlx.DB
+	tx               *sqlx.Tx
+	savePointID      string
+	savePointEnabled bool
+	nested           bool
 }
 
 func (n *node) Close() error {
@@ -77,12 +101,19 @@ func (n *node) Close() error {
 func (n node) Beginx() (Node, error) {
 	var err error
 
-	if n.tx == nil {
+	switch {
+	case n.tx == nil:
+		// new actual transaction
 		n.tx, err = n.db.Beginx()
 		n.Driver = n.tx
-	} else {
+	case n.savePointEnabled:
+		// already in a transaction: using savepoints
+		n.nested = true
 		n.savePointID = uuid.NewV1().String()
 		_, err = n.tx.Exec("SAVEPOINT $1", n.savePointID)
+	default:
+		// already in a transaction: reusing current transaction
+		n.nested = true
 	}
 
 	if err != nil {
@@ -99,9 +130,9 @@ func (n *node) Rollback() error {
 
 	var err error
 
-	if n.savePointID != "" {
+	if n.savePointEnabled && n.savePointID != "" {
 		_, err = n.tx.Exec("ROLLBACK TO SAVEPOINT $1", n.savePointID)
-	} else {
+	} else if !n.nested {
 		err = n.tx.Rollback()
 	}
 
@@ -124,7 +155,7 @@ func (n *node) Commit() error {
 
 	if n.savePointID != "" {
 		_, err = n.tx.Exec("RELEASE TO SAVEPOINT $1", n.savePointID)
-	} else {
+	} else if !n.nested {
 		err = n.tx.Commit()
 	}
 
@@ -136,4 +167,18 @@ func (n *node) Commit() error {
 	n.Driver = nil
 
 	return nil
+}
+
+// Option to configure sqalx
+type Option func(*node) error
+
+// SavePoint option enables PostgreSQL Savepoints for nested transactions.
+func SavePoint(enabled bool) Option {
+	return func(n *node) error {
+		if enabled && n.db.DriverName() != "postgres" {
+			return ErrIncompatibleOption
+		}
+		n.savePointEnabled = enabled
+		return nil
+	}
 }
