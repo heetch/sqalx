@@ -1,9 +1,7 @@
 # sqalx
 
-sqalx (pronounced 'scale-x') is a library that allows to seamlessly create nested transactions and to avoid thinking about whether or not a function is called within a transaction.
+sqalx (pronounced 'scale-x') is a library built on top of [sqlx](https://github.com/jmoiron/sqlx) that allows to seamlessly create nested transactions and to avoid thinking about whether or not a function is called within a transaction.
 With sqalx you can easily create reusable and composable functions that can be called within or out of transactions and that can create transactions themselves.
-
-It is built on top of [sqlx](https://github.com/jmoiron/sqlx) and currently supports only PostgreSQL.
 
 ## Getting started
 
@@ -26,7 +24,6 @@ import (
 	"log"
 
 	"github.com/heetch/sqalx"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -84,3 +81,18 @@ func updateGroups(node sqlax.Node) error {
 	return tx.Commit()
 }
 ```
+
+### PostgreSQL Savepoints
+
+When using the PostgreSQL driver, an option can be passed to `Connect` to enable the use of PostgreSQL [Savepoints](https://www.postgresql.org/docs/8.1/static/sql-savepoint.html) for nested transactions.
+
+```go
+node, err := sqalx.Connect("postgres", "user=foo dbname=bar sslmode=disable", sqalx.SavePoint(true))
+```
+
+
+## Issue
+Please open an issue if you encounter any problem.
+
+## License
+ The library is released under the MIT license. See [LICENSE](LICENSE) file.
