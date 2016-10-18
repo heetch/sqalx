@@ -14,11 +14,17 @@ var (
 	ErrNotInTransaction = errors.New("not in transaction")
 )
 
-// A Node is a database driver that can manage nested transactions
+// A Node is a database driver that can manage nested transactions.
 type Node interface {
 	Driver
+
+	// Close the underlying sqlx connection.
+	Close() error
+	// Begin a new transaction.
 	Beginx() (Node, error)
+	// Rollback the associated transaction.
 	Rollback() error
+	// Commit the assiociated transaction.
 	Commit() error
 }
 
@@ -48,11 +54,25 @@ func New(db *sqlx.DB) Node {
 	}
 }
 
+// Connect to a database.
+func Connect(driverName, dataSourceName string) (Node, error) {
+	db, err := sqlx.Connect(driverName, dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(db), nil
+}
+
 type node struct {
 	Driver
 	db          *sqlx.DB
 	tx          *sqlx.Tx
 	savePointID string
+}
+
+func (n *node) Close() error {
+	return n.db.Close()
 }
 
 func (n node) Beginx() (Node, error) {

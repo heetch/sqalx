@@ -1,10 +1,13 @@
 package sqalx_test
 
 import (
+	"os"
 	"testing"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/heetch/sqalx"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
@@ -16,6 +19,21 @@ func prepareDB(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock, func()) {
 	return sqlx.NewDb(db, "mock"), mock, func() {
 		db.Close()
 	}
+}
+
+func TestSqalxConnect(t *testing.T) {
+	driverName := os.Getenv("DRIVER_NAME")
+	dataSource := os.Getenv("DRIVER_DATA_SOURCE")
+	if driverName == "" || dataSource == "" {
+		t.Skip()
+		return
+	}
+
+	node, err := sqalx.Connect(driverName, dataSource)
+	require.NoError(t, err)
+
+	err = node.Close()
+	require.NoError(t, err)
 }
 
 func TestSqalxTransactionViolations(t *testing.T) {
