@@ -12,24 +12,42 @@ import (
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
-func prepareDB(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock, func()) {
+func prepareDB(t *testing.T, driverName string) (*sqlx.DB, sqlmock.Sqlmock, func()) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 
-	return sqlx.NewDb(db, "mock"), mock, func() {
+	return sqlx.NewDb(db, driverName), mock, func() {
 		db.Close()
 	}
 }
 
-func TestSqalxConnect(t *testing.T) {
-	driverName := os.Getenv("DRIVER_NAME")
-	dataSource := os.Getenv("DRIVER_DATA_SOURCE")
-	if driverName == "" || dataSource == "" {
+func TestSqalxConnectPostgreSQL(t *testing.T) {
+	dataSource := os.Getenv("POSTGRESQL_DATASOURCE")
+	if dataSource == "" {
 		t.Skip()
 		return
 	}
 
-	node, err := sqalx.Connect(driverName, dataSource)
+	testSqalxConnect(t, "postgres", dataSource)
+	testSqalxConnect(t, "postgres", dataSource, sqalx.SavePoint(true))
+}
+
+func TestSqalxConnectMySQL(t *testing.T) {
+	dataSource := os.Getenv("MYSQL_DATASOURCE")
+	if dataSource == "" {
+		t.Skip()
+		return
+	}
+
+	testSqalxConnect(t, "mysql", dataSource)
+
+	node, err := sqalx.Connect("mysql", dataSource, sqalx.SavePoint(true))
+	require.Equal(t, sqalx.ErrIncompatibleOption, err)
+	require.Nil(t, node)
+}
+
+func testSqalxConnect(t *testing.T, driverName, dataSource string, options ...sqalx.Option) {
+	node, err := sqalx.Connect(driverName, dataSource, options...)
 	require.NoError(t, err)
 
 	err = node.Close()
@@ -37,7 +55,8 @@ func TestSqalxConnect(t *testing.T) {
 }
 
 func TestSqalxTransactionViolations(t *testing.T) {
-	node := sqalx.New(nil)
+	node, err := sqalx.New(nil)
+	require.NoError(t, err)
 
 	require.Panics(t, func() {
 		node.Exec("UPDATE products SET views = views + 1")
@@ -48,7 +67,7 @@ func TestSqalxTransactionViolations(t *testing.T) {
 	})
 
 	// calling Rollback after a transaction is closed does nothing
-	err := node.Rollback()
+	err = node.Rollback()
 	require.NoError(t, err)
 
 	err = node.Commit()
@@ -56,19 +75,20 @@ func TestSqalxTransactionViolations(t *testing.T) {
 }
 
 func TestSqalxSimpleQuery(t *testing.T) {
-	db, mock, cleanup := prepareDB(t)
+	db, mock, cleanup := prepareDB(t, "mock")
 	defer cleanup()
 
 	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
 
-	node := sqalx.New(db)
+	node, err := sqalx.New(db)
+	require.NoError(t, err)
 
-	_, err := node.Exec("UPDATE products SET views = views + 1")
+	_, err = node.Exec("UPDATE products SET views = views + 1")
 	require.NoError(t, err)
 }
 
 func TestSqalxTopLevelTransaction(t *testing.T) {
-	db, mock, cleanup := prepareDB(t)
+	db, mock, cleanup := prepareDB(t, "mock")
 	defer cleanup()
 	var err error
 
@@ -76,7 +96,8 @@ func TestSqalxTopLevelTransaction(t *testing.T) {
 	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	node := sqalx.New(db)
+	node, err := sqalx.New(db)
+	require.NoError(t, err)
 
 	node, err = node.Beginx()
 	require.NoError(t, err)
@@ -94,8 +115,23 @@ func TestSqalxTopLevelTransaction(t *testing.T) {
 }
 
 func TestSqalxNestedTransactions(t *testing.T) {
-	db, mock, cleanup := prepareDB(t)
+	testSqalxNestedTransactions(t, false)
+}
+
+func TestSqalxNestedTransactionsWithSavePoint(t *testing.T) {
+	testSqalxNestedTransactions(t, true)
+}
+
+func testSqalxNestedTransactions(t *testing.T, testSavePoint bool) {
+	driverName := "mock"
+	if testSavePoint {
+		driverName = "postgres"
+	}
+
+	db, mock, cleanup := prepareDB(t, driverName)
 	defer cleanup()
+
+	require.Equal(t, driverName, db.DriverName())
 
 	var err error
 	const query = "UPDATE products SET views = views + 1"
@@ -103,15 +139,24 @@ func TestSqalxNestedTransactions(t *testing.T) {
 	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
+	if testSavePoint {
+		mock.ExpectExec("SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
+	}
 	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("ROLLBACK TO").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
+	if testSavePoint {
+		mock.ExpectExec("ROLLBACK TO").WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	if testSavePoint {
+		mock.ExpectExec("SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
+	}
 	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("RELEASE TO").WillReturnResult(sqlmock.NewResult(1, 1))
+	if testSavePoint {
+		mock.ExpectExec("RELEASE TO").WillReturnResult(sqlmock.NewResult(1, 1))
+	}
 	mock.ExpectCommit()
 
-	node := sqalx.New(db)
+	node, err := sqalx.New(db, sqalx.SavePoint(testSavePoint))
+	require.NoError(t, err)
 
 	_, err = node.Exec(query)
 	require.NoError(t, err)
