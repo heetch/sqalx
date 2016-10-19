@@ -27,17 +27,25 @@ import (
 	"log"
 
 	"github.com/heetch/sqalx"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	// Connect to PostgreSQL with sqalx.
-	// It returns a sqalx.Node. A Node is a wrapper around sqlx.DB or sqlx.Tx.
-	node, err := sqalx.Connect("postgres", "user=foo dbname=bar sslmode=disable")
+	// Connect to PostgreSQL with sqlx.
+	db, err := sqlx.Connect("postgres", "user=foo dbname=bar sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer node.Close()
+
+	defer db.Close()
+
+	// Pass the db to sqalx.
+	// It returns a sqalx.Node. A Node is a wrapper around sqlx.DB or sqlx.Tx.
+	node, err := sqalx.New(db)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	err = createUser(node)
 	if err != nil {
@@ -87,12 +95,11 @@ func updateGroups(node sqlax.Node) error {
 
 ### PostgreSQL Savepoints
 
-When using the PostgreSQL driver, an option can be passed to `Connect` to enable the use of PostgreSQL [Savepoints](https://www.postgresql.org/docs/8.1/static/sql-savepoint.html) for nested transactions.
+When using the PostgreSQL driver, an option can be passed to `New` to enable the use of PostgreSQL [Savepoints](https://www.postgresql.org/docs/8.1/static/sql-savepoint.html) for nested transactions.
 
 ```go
-node, err := sqalx.Connect("postgres", "user=foo dbname=bar sslmode=disable", sqalx.SavePoint(true))
+node, err := sqalx.New(db, sqalx.SavePoint(true))
 ```
-
 
 ## Issue
 Please open an issue if you encounter any problem.
