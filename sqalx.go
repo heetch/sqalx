@@ -110,7 +110,7 @@ func (n node) Beginx() (Node, error) {
 	case n.savePointEnabled:
 		// already in a transaction: using savepoints
 		n.nested = true
-		// savepoints name must start with a char and cannot contain dash (-)
+		// savepoints name must start with a char and cannot contain dashes (-)
 		n.savePointID = "sp_" + strings.Replace(uuid.NewV1().String(), "-", "_", -1)
 		_, err = n.tx.Exec("SAVEPOINT " + n.savePointID)
 	default:
