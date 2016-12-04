@@ -3,6 +3,7 @@ package sqalx
 import (
 	"database/sql"
 	"errors"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	uuid "github.com/satori/go.uuid"
@@ -109,8 +110,9 @@ func (n node) Beginx() (Node, error) {
 	case n.savePointEnabled:
 		// already in a transaction: using savepoints
 		n.nested = true
-		n.savePointID = uuid.NewV1().String()
-		_, err = n.tx.Exec("SAVEPOINT $1", n.savePointID)
+		// savepoints name must start with a char and cannot contain dash (-)
+		n.savePointID = "sp_" + strings.Replace(uuid.NewV1().String(), "-", "_", -1)
+		_, err = n.tx.Exec("SAVEPOINT " + n.savePointID)
 	default:
 		// already in a transaction: reusing current transaction
 		n.nested = true
@@ -131,7 +133,7 @@ func (n *node) Rollback() error {
 	var err error
 
 	if n.savePointEnabled && n.savePointID != "" {
-		_, err = n.tx.Exec("ROLLBACK TO SAVEPOINT $1", n.savePointID)
+		_, err = n.tx.Exec("ROLLBACK TO SAVEPOINT " + n.savePointID)
 	} else if !n.nested {
 		err = n.tx.Rollback()
 	}
@@ -154,7 +156,7 @@ func (n *node) Commit() error {
 	var err error
 
 	if n.savePointID != "" {
-		_, err = n.tx.Exec("RELEASE TO SAVEPOINT $1", n.savePointID)
+		_, err = n.tx.Exec("RELEASE SAVEPOINT " + n.savePointID)
 	} else if !n.nested {
 		err = n.tx.Commit()
 	}
