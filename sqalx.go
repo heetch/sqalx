@@ -68,6 +68,23 @@ func New(db *sqlx.DB, options ...Option) (Node, error) {
 	return &n, nil
 }
 
+// NewFromTransaction creates a new Node from the given transaction.
+func NewFromTransaction(tx *sqlx.Tx, options ...Option) (Node, error) {
+	n := node{
+		tx:     tx,
+		Driver: tx,
+	}
+
+	for _, opt := range options {
+		err := opt(&n)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &n, nil
+}
+
 // Connect to a database.
 func Connect(driverName, dataSourceName string, options ...Option) (Node, error) {
 	db, err := sqlx.Connect(driverName, dataSourceName)
@@ -177,7 +194,7 @@ type Option func(*node) error
 // SavePoint option enables PostgreSQL Savepoints for nested transactions.
 func SavePoint(enabled bool) Option {
 	return func(n *node) error {
-		if enabled && n.db.DriverName() != "postgres" {
+		if enabled && n.Driver.DriverName() != "postgres" {
 			return ErrIncompatibleOption
 		}
 		n.savePointEnabled = enabled

@@ -144,14 +144,14 @@ func testSqalxNestedTransactions(t *testing.T, testSavePoint bool) {
 	}
 	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
 	if testSavePoint {
-		mock.ExpectExec("ROLLBACK TO").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("ROLLBACK TO SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
 	}
 	if testSavePoint {
 		mock.ExpectExec("SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
 	}
 	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
 	if testSavePoint {
-		mock.ExpectExec("RELEASE TO").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("RELEASE SAVEPOINT").WillReturnResult(sqlmock.NewResult(1, 1))
 	}
 	mock.ExpectCommit()
 
@@ -198,5 +198,34 @@ func testSqalxNestedTransactions(t *testing.T, testSavePoint bool) {
 	require.NoError(t, err)
 
 	err = n1.Commit()
+	require.NoError(t, err)
+}
+
+func TestSqalxFromTransaction(t *testing.T) {
+	db, mock, cleanup := prepareDB(t, "mock")
+	defer cleanup()
+
+	mock.ExpectBegin()
+	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectRollback()
+
+	tx, err := db.Beginx()
+	require.NoError(t, err)
+
+	node, err := sqalx.NewFromTransaction(tx)
+	require.NoError(t, err)
+
+	_, err = node.Exec("UPDATE products SET views = views + 1")
+	require.NoError(t, err)
+
+	ntx, err := node.Beginx()
+	_, err = ntx.Exec("UPDATE products SET views = views + 1")
+	require.NoError(t, err)
+
+	err = ntx.Rollback()
+	require.NoError(t, err)
+
+	err = node.Rollback()
 	require.NoError(t, err)
 }
