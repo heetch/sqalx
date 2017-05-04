@@ -188,6 +188,11 @@ func (n *node) Commit() error {
 	return nil
 }
 
+// Tx returns the underlying transaction.
+func (n *node) Tx() *sqlx.Tx {
+	return n.tx
+}
+
 // Option to configure sqalx
 type Option func(*node) error
 
