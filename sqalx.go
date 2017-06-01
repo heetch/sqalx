@@ -31,6 +31,8 @@ type Node interface {
 	Rollback() error
 	// Commit the assiociated transaction.
 	Commit() error
+	// Tx returns the underlying transaction.
+	Tx() *sqlx.Tx
 }
 
 // A Driver can query the database. It can either be a *sqlx.DB or a *sqlx.Tx
