@@ -39,8 +39,11 @@ type Node interface {
 // and therefore is limited to the methods they have in common.
 type Driver interface {
 	sqlx.Execer
+	sqlx.ExecerContext
 	sqlx.Queryer
+	sqlx.QueryerContext
 	sqlx.Preparer
+	sqlx.PreparerContext
 	BindNamed(query string, arg interface{}) (string, []interface{}, error)
 	DriverName() string
 	Get(dest interface{}, query string, args ...interface{}) error
