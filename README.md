@@ -12,7 +12,7 @@ With sqalx you can easily create reusable and composable functions that can be c
 $ go get github.com/heetch/sqalx
 ```
 
-### Import sqlax
+### Import sqalx
 
 ```go
 import "github.com/heetch/sqalx"
@@ -76,7 +76,7 @@ func createUser(node sqalx.Node) error {
 	return tx.Commit()
 }
 
-func updateGroups(node sqlax.Node) error {
+func updateGroups(node sqalx.Node) error {
 	// Notice we are creating a new transaction.
 	// This would normally cause a dead lock without sqalx.
 	tx, err := node.Beginx()
