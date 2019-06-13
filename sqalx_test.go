@@ -4,12 +4,12 @@ import (
 	"os"
 	"testing"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/heetch/sqalx"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
-	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 func prepareDB(t *testing.T, driverName string) (*sqlx.DB, sqlmock.Sqlmock, func()) {
