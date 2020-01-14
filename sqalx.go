@@ -60,6 +60,8 @@ type Driver interface {
 	PrepareNamedContext(ctx context.Context, query string) (*sqlx.NamedStmt, error)
 	Preparex(query string) (*sqlx.Stmt, error)
 	PreparexContext(ctx context.Context, query string) (*sqlx.Stmt, error)
+	QueryRow(string, ...interface{}) *sql.Row
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
 	Rebind(query string) string
 	Select(dest interface{}, query string, args ...interface{}) error
 	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
