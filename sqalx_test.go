@@ -40,10 +40,6 @@ func TestSqalxConnectMySQL(t *testing.T) {
 	}
 
 	testSqalxConnect(t, "mysql", dataSource)
-
-	node, err := sqalx.Connect("mysql", dataSource, sqalx.SavePoint(true))
-	require.Equal(t, sqalx.ErrIncompatibleOption, err)
-	require.Nil(t, node)
 }
 
 func testSqalxConnect(t *testing.T, driverName, dataSource string, options ...sqalx.Option) {

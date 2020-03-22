@@ -14,10 +14,6 @@ var (
 	// ErrNotInTransaction is returned when using Commit
 	// outside of a transaction.
 	ErrNotInTransaction = errors.New("not in transaction")
-
-	// ErrIncompatibleOption is returned when using an option incompatible
-	// with the selected driver.
-	ErrIncompatibleOption = errors.New("incompatible option")
 )
 
 var uuids = fastuuid.MustNewGenerator()
@@ -215,9 +211,6 @@ type Option func(*node) error
 // SavePoint option enables PostgreSQL Savepoints for nested transactions.
 func SavePoint(enabled bool) Option {
 	return func(n *node) error {
-		if enabled && n.Driver.DriverName() != "postgres" {
-			return ErrIncompatibleOption
-		}
 		n.savePointEnabled = enabled
 		return nil
 	}
