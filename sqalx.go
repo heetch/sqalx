@@ -212,10 +212,12 @@ func (n *node) Tx() *sqlx.Tx {
 // Option to configure sqalx
 type Option func(*node) error
 
-// SavePoint option enables PostgreSQL Savepoints for nested transactions.
+// SavePoint option enables PostgreSQL and SQLite Savepoints for nested
+// transactions.
 func SavePoint(enabled bool) Option {
 	return func(n *node) error {
-		if enabled && n.Driver.DriverName() != "postgres" {
+		driverName := n.Driver.DriverName()
+		if enabled && driverName != "postgres" && driverName != "sqlite3" {
 			return ErrIncompatibleOption
 		}
 		n.savePointEnabled = enabled
