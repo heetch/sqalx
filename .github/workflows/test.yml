@@ -1,0 +1,36 @@
+on: [push, pull_request]
+name: Test
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.15.x, 1.16.x]
+
+    services:
+      postgres:
+        image: postgres:13-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: sqalx
+          POSTGRES_PASSWORD: sqalx
+      mysql:
+        image: mysql:8.0
+        ports:
+            - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: sqalx
+          MYSQL_USER: sqalx
+          MYSQL_PASSWORD: sqalx
+          MYSQL_DATABASE: sqalx
+
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Test
+      run: make test
