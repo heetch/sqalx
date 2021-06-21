@@ -24,6 +24,7 @@ func prepareDB(t *testing.T, driverName string) (*sqlx.DB, sqlmock.Sqlmock, func
 func TestSqalxConnectPostgreSQL(t *testing.T) {
 	dataSource := os.Getenv("POSTGRESQL_DATASOURCE")
 	if dataSource == "" {
+		t.Log("skipping due to blank POSTGRESQL_DATASOURCE")
 		t.Skip()
 		return
 	}
@@ -35,6 +36,7 @@ func TestSqalxConnectPostgreSQL(t *testing.T) {
 func TestSqalxConnectMySQL(t *testing.T) {
 	dataSource := os.Getenv("MYSQL_DATASOURCE")
 	if dataSource == "" {
+		t.Log("skipping due to blank MYSQL_DATASOURCE")
 		t.Skip()
 		return
 	}
