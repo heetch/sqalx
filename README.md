@@ -104,5 +104,32 @@ node, err := sqalx.New(db, sqalx.SavePoint(true))
 ## Issue
 Please open an issue if you encounter any problem.
 
+## Development
+sqalx is covered by a go test suite.  In order to test against specific databases we include a docker-compose file that runs Postgres and MySQL.
+
+### Running all tests
+To run the tests, first run `docker-compose up` to run both Postgres and MySQL in locally-exposed docker images.  Then run your tests via `make test` which sets up the above described data sources and runs all tests.
+
+### Running specific tests
+To test against the Postgres instance be sure to export the following DSN:
+
+```sh
+export POSTGRESQL_DATASOURCE="postgresql://sqalx:sqalx@localhost:5432/sqalx?sslmode=disable"
+```
+
+To test against the MySQL instance be sure to export the following DSN:
+
+```sh
+export MYSQL_DATASOURCE="sqalx:sqalx@tcp(localhost:3306)/sqalx"
+```
+
+To test against SQlite export the following DSN:
+
+```sh
+export SQLITE_DATASOURCE=":memory:"
+```
+
+_Note:_ If you are developing on an M1 Mac you will need to use the officially supported by Oracle image rather than the default `mysql:tag` image.  It is commented out in `docker-compose.yml`.
+
 ## License
  The library is released under the MIT license. See [LICENSE](LICENSE) file.

@@ -9,6 +9,7 @@ import (
 	"github.com/heetch/sqalx"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,6 +32,17 @@ func TestSqalxConnectPostgreSQL(t *testing.T) {
 
 	testSqalxConnect(t, "postgres", dataSource)
 	testSqalxConnect(t, "postgres", dataSource, sqalx.SavePoint(true))
+}
+
+func TestSqalxConnectSqlite(t *testing.T) {
+	dataSource := os.Getenv("SQLITE_DATASOURCE")
+	if dataSource == "" {
+		t.Skip()
+		return
+	}
+
+	testSqalxConnect(t, "sqlite3", dataSource)
+	testSqalxConnect(t, "sqlite3", dataSource, sqalx.SavePoint(true))
 }
 
 func TestSqalxConnectMySQL(t *testing.T) {
@@ -61,10 +73,12 @@ func TestSqalxTransactionViolations(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Panics(t, func() {
+		//nolint:errcheck // the intended panic makes error checking irrelevant
 		node.Exec("UPDATE products SET views = views + 1")
 	})
 
 	require.Panics(t, func() {
+		//nolint:errcheck // the intended panic makes error checking irrelevant
 		node.Beginx()
 	})
 
@@ -222,6 +236,7 @@ func TestSqalxFromTransaction(t *testing.T) {
 	require.NoError(t, err)
 
 	ntx, err := node.Beginx()
+	require.NoError(t, err)
 	_, err = ntx.Exec("UPDATE products SET views = views + 1")
 	require.NoError(t, err)
 
