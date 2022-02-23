@@ -1,6 +1,7 @@
 package sqalx_test
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -197,7 +198,7 @@ func testSqalxNestedTransactions(t *testing.T, testSavePoint bool) {
 	err = n1_1.Commit()
 	require.Equal(t, sqalx.ErrNotInTransaction, err)
 
-	n1_1, err = n1.Beginx()
+	n1_1, err = n1.BeginTxx(context.Background(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, n1_1)
 

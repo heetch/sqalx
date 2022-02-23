@@ -30,6 +30,10 @@ type Node interface {
 	Close() error
 	// Begin a new transaction.
 	Beginx() (Node, error)
+	// Begin a new transaction using the provided context and options.
+	// Note that the provided parameters are only used when opening a new transaction,
+	// not on nested ones.
+	BeginTxx(ctx context.Context, opts *sql.TxOptions) (Node, error)
 	// Rollback the associated transaction.
 	Rollback() error
 	// Commit the assiociated transaction.
@@ -133,12 +137,16 @@ func (n *node) Close() error {
 }
 
 func (n node) Beginx() (Node, error) {
+	return n.BeginTxx(context.Background(), nil)
+}
+
+func (n node) BeginTxx(ctx context.Context, opts *sql.TxOptions) (Node, error) {
 	var err error
 
 	switch {
 	case n.tx == nil:
 		// new actual transaction
-		n.tx, err = n.db.Beginx()
+		n.tx, err = n.db.BeginTxx(ctx, opts)
 		n.Driver = n.tx
 	case n.savePointEnabled:
 		// already in a transaction: using savepoints
