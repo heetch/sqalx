@@ -55,10 +55,7 @@ func TestSqalxConnectMySQL(t *testing.T) {
 	}
 
 	testSqalxConnect(t, "mysql", dataSource)
-
-	node, err := sqalx.Connect("mysql", dataSource, sqalx.SavePoint(true))
-	require.Equal(t, sqalx.ErrIncompatibleOption, err)
-	require.Nil(t, node)
+	testSqalxConnect(t, "mysql", dataSource, sqalx.SavePoint(true))
 }
 
 func testSqalxConnect(t *testing.T, driverName, dataSource string, options ...sqalx.Option) {
@@ -132,19 +129,22 @@ func TestSqalxTopLevelTransaction(t *testing.T) {
 }
 
 func TestSqalxNestedTransactions(t *testing.T) {
-	testSqalxNestedTransactions(t, false)
+	testSqalxNestedTransactions(t, "mock", false)
 }
 
 func TestSqalxNestedTransactionsWithSavePoint(t *testing.T) {
-	testSqalxNestedTransactions(t, true)
+	for _, driver := range []string{
+		"postgres",
+		"sqlite3",
+		"mysql",
+	} {
+		t.Run(driver, func(t *testing.T) {
+			testSqalxNestedTransactions(t, driver, true)
+		})
+	}
 }
 
-func testSqalxNestedTransactions(t *testing.T, testSavePoint bool) {
-	driverName := "mock"
-	if testSavePoint {
-		driverName = "postgres"
-	}
-
+func testSqalxNestedTransactions(t *testing.T, driverName string, testSavePoint bool) {
 	db, mock, cleanup := prepareDB(t, driverName)
 	defer cleanup()
 
