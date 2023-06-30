@@ -1,3 +1,6 @@
+
+# :warning: Warning: This repository is considered inactive and no change will be made to it except for security updates.
+
 # sqalx
 
 [![GoDoc](https://godoc.org/github.com/heetch/sqalx?status.svg)](https://godoc.org/github.com/heetch/sqalx)
