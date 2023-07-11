@@ -8,6 +8,7 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/heetch/sqalx"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
@@ -33,6 +34,17 @@ func TestSqalxConnectPostgreSQL(t *testing.T) {
 
 	testSqalxConnect(t, "postgres", dataSource)
 	testSqalxConnect(t, "postgres", dataSource, sqalx.SavePoint(true))
+}
+func TestSqalxConnectPGX(t *testing.T) {
+	dataSource := os.Getenv("POSTGRESQL_DATASOURCE")
+	if dataSource == "" {
+		t.Log("skipping due to blank POSTGRESQL_DATASOURCE")
+		t.Skip()
+		return
+	}
+
+	testSqalxConnect(t, "pgx", dataSource)
+	testSqalxConnect(t, "pgx", dataSource, sqalx.SavePoint(true))
 }
 
 func TestSqalxConnectSqlite(t *testing.T) {
@@ -135,6 +147,7 @@ func TestSqalxNestedTransactions(t *testing.T) {
 func TestSqalxNestedTransactionsWithSavePoint(t *testing.T) {
 	for _, driver := range []string{
 		"postgres",
+		"pgx",
 		"sqlite3",
 		"mysql",
 	} {

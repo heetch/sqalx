@@ -225,7 +225,7 @@ type Option func(*node) error
 func SavePoint(enabled bool) Option {
 	return func(n *node) error {
 		driverName := n.Driver.DriverName()
-		if enabled && driverName != "postgres" && driverName != "sqlite3" && driverName != "mysql" {
+		if enabled && driverName != "postgres" && driverName != "pgx" && driverName != "pgx/v5" && driverName != "sqlite3" && driverName != "mysql" {
 			return ErrIncompatibleOption
 		}
 		n.savePointEnabled = enabled
