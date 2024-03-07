@@ -6,8 +6,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/rogpeppe/fastuuid"
 )
 
 var (
@@ -19,8 +19,6 @@ var (
 	// with the selected driver.
 	ErrIncompatibleOption = errors.New("incompatible option")
 )
-
-var uuids = fastuuid.MustNewGenerator()
 
 // A Node is a database driver that can manage nested transactions.
 type Node interface {
@@ -152,7 +150,7 @@ func (n node) BeginTxx(ctx context.Context, opts *sql.TxOptions) (Node, error) {
 		// already in a transaction: using savepoints
 		n.nested = true
 		// savepoints name must start with a char and cannot contain dashes (-)
-		n.savePointID = "sp_" + strings.Replace(uuids.Hex128(), "-", "_", -1)
+		n.savePointID = "sp_" + strings.Replace(uuid.NewString(), "-", "_", -1)
 		_, err = n.tx.Exec("SAVEPOINT " + n.savePointID)
 	default:
 		// already in a transaction: reusing current transaction
